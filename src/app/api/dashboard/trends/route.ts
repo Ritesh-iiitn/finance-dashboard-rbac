@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withRoleGuard } from "@/lib/rbac";
 
-export const GET = withRoleGuard("ANALYST", async (req: NextRequest) => {
+export const GET = withRoleGuard(["ANALYST", "ADMIN"], async (req: NextRequest) => {
   try {
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);

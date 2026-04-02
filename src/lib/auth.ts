@@ -13,19 +13,61 @@ export const authOptions: NextAuthConfig = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        const parsedCredentials = z
-          .object({ email: z.string().email(), password: z.string().min(6) })
-          .safeParse(credentials);
+        try {
+          const parsedCredentials = z
+            .object({ email: z.string().email(), password: z.string().min(6) })
+            .safeParse(credentials);
 
-        if (parsedCredentials.success) {
-          const { email, password } = parsedCredentials.data;
-          const user = await prisma.user.findUnique({ where: { email } });
-          if (!user || user.status !== "ACTIVE") return null;
-          
-          const passwordsMatch = await bcrypt.compare(password, user.password);
-          if (passwordsMatch) return { id: user.id, name: user.name, email: user.email, role: user.role };
+          if (!parsedCredentials.success) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("[auth] Invalid credential payload", parsedCredentials.error.flatten());
+            }
+            return null;
+          }
+
+          const normalizedEmail = parsedCredentials.data.email.trim().toLowerCase();
+          const password = parsedCredentials.data.password;
+          const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+          if (!user) {
+            if (process.env.NODE_ENV !== "production") console.error("[auth] User not found", { email: normalizedEmail });
+            return null;
+          }
+
+          if (user.status !== "ACTIVE") {
+            if (process.env.NODE_ENV !== "production") console.error("[auth] User is not active", { email: normalizedEmail, status: user.status });
+            return null;
+          }
+
+          // Guard against malformed hashes from manual SQL inserts.
+          const storedHash = (user.password ?? "").trim();
+          const looksLikeBcryptHash = /^\$2[aby]\$\d{2}\$/.test(storedHash);
+          if (!looksLikeBcryptHash) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("[auth] Stored password is not a valid bcrypt hash prefix", {
+                email: normalizedEmail,
+                hashPrefix: storedHash.slice(0, 8),
+                hashLength: storedHash.length,
+              });
+            }
+            return null;
+          }
+
+          const passwordsMatch = await bcrypt.compare(password, storedHash);
+          if (!passwordsMatch) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("[auth] Password comparison failed", { email: normalizedEmail });
+            }
+            return null;
+          }
+
+          return { id: user.id, name: user.name, email: user.email, role: user.role };
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[auth] authorize() failed with exception", error);
+          }
+          return null;
         }
-        return null;
       },
     }),
   ],

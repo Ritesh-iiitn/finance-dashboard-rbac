@@ -2,18 +2,12 @@ import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || "default_secret";
+const JWT_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "default_secret";
 
 export type Role = "VIEWER" | "ANALYST" | "ADMIN";
 
-const ROLE_HIERARCHY: Record<Role, number> = {
-  VIEWER: 1,
-  ANALYST: 2,
-  ADMIN: 3,
-};
-
 export function withRoleGuard(
-  allowedRole: Role,
+  allowedRoles: Role | Role[],
   handler: (req: NextRequest, session: any, params?: any) => Promise<Response> | Response
 ) {
   return async (req: NextRequest, { params }: { params?: any } = {}) => {
@@ -39,13 +33,11 @@ export function withRoleGuard(
       );
     }
 
-    const unparsedRole = session.user.role as Role;
-    const userRoleValue = ROLE_HIERARCHY[unparsedRole] || 0;
-    const requiredRoleValue = ROLE_HIERARCHY[allowedRole] || 99;
-
-    if (userRoleValue < requiredRoleValue) {
+    const userRole = session.user.role as Role;
+    const allowed = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    if (!allowed.includes(userRole)) {
       return NextResponse.json(
-        { success: false, error: "Forbidden: Insufficient role permissions" },
+        { success: false, error: "Forbidden: Role not permitted for this resource" },
         { status: 403 }
       );
     }

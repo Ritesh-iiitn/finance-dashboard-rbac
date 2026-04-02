@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withRoleGuard } from "@/lib/rbac";
 
-export const GET = withRoleGuard("VIEWER", async (req: NextRequest) => {
+export const GET = withRoleGuard(["VIEWER", "ANALYST", "ADMIN"], async (req: NextRequest) => {
   try {
     const records = await prisma.financialRecord.findMany({
       where: { isDeleted: false },

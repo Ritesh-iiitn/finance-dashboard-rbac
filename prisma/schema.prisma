@@ -3,32 +3,35 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String            @unique
   password  String
-  role      String   @default("VIEWER") // VIEWER, ANALYST, ADMIN
-  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      String            @default("VIEWER")
+  status    String            @default("ACTIVE")
+  createdAt DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
   records   FinancialRecord[]
 }
 
 model FinancialRecord {
   id          String   @id @default(cuid())
   amount      Float
-  type        String   // INCOME, EXPENSE
+  type        String
   category    String
-  date        DateTime
+  date        DateTime @db.Timestamptz(6)
   description String?
   isDeleted   Boolean  @default(false)
   createdById String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   createdBy   User     @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  @@index([createdById])
 }

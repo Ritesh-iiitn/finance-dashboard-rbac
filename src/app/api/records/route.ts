@@ -12,7 +12,7 @@ const createRecordSchema = z.object({
   description: z.string().optional(),
 });
 
-export const GET = withRoleGuard("VIEWER", async (req: NextRequest) => {
+export const GET = withRoleGuard(["VIEWER", "ANALYST", "ADMIN"], async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");

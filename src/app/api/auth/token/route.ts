@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || "default_secret";
+const JWT_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "default_secret";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,13 +18,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 400 });
     }
 
-    const { email, password } = parsedCredentials.data;
+    const password = parsedCredentials.data.password;
+    const email = parsedCredentials.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || user.status !== "ACTIVE") {
       return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 });
     }
 
-    const passwordsMatch = await bcrypt.compare(password, user.password);
+    const passwordsMatch = await bcrypt.compare(password, user.password.trim());
     if (!passwordsMatch) {
       return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 });
     }

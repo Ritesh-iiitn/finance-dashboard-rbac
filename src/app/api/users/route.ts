@@ -36,7 +36,8 @@ export const POST = withRoleGuard("ADMIN", async (req: NextRequest) => {
       );
     }
 
-    const { name, email, password, role } = parsed.data;
+    const { name, password, role } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
